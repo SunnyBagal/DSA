@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stars</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Inter', sans-serif; }
+        #status { position: absolute; top: 25px; left: 25px; color: #00f2ff; z-index: 10; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; background: rgba(0,0,0,0.7); padding: 12px; border-radius: 4px; border-left: 3px solid #ff0055; }
+        #video-preview { position: absolute; bottom: 25px; right: 25px; width: 180px; height: 135px; border-radius: 12px; 
+    </style>
+</head>
+<body>
+    <div class="controls">
+  
+    </div>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        const statusEl = document.getElementById('status');
+        const videoElement = document.getElementById('video-preview');
+
+        // --- 1. ENGINE SETUP ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 2000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        camera.position.set(0, 5, 30);
+
+        // --- 2. BLOOM (FOR THAT NEBULA GLOW) ---
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloom.strength = 2.0; 
+        composer.addPass(bloom);
+
+        // --- 3. BACKGROUND STARS ---
+        const starGeom = new THREE.BufferGeometry();
+        const starPos = new Float32Array(5000 * 3);
+        for(let i=0; i<5000*3; i++) starPos[i] = (Math.random() - 0.5) * 1000;
+        starGeom.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5 });
+        scene.add(new THREE.Points(starGeom, starMat));
+
+        // --- 4. SATURN PARTICLES ---
+        const count = 28000;
+        const geometry = new THREE.BufferGeometry();
+        const posArray = new Float32Array(count * 3);
+        const homeArray = new Float32Array(count * 3);
+        const scatterArray = new Float32Array(count * 3);
+        const colorArray = new Float32Array(count * 3);
+
+        const colorA = new THREE.Color(0x00f2ff); 
+        const colorB = new THREE.Color(0xff00cc); 
+
+        for (let i = 0; i < count; i++) {
+            const i3 = i * 3;
+            let x, y, z;
+
+            // Define Home (Saturn)
+            if (i < 9000) { 
+                const r = Math.random() * 4;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                x = r * Math.sin(phi) * Math.cos(theta);
+                y = r * Math.sin(phi) * Math.sin(theta);
+                z = r * Math.cos(phi);
+            } else { 
+                const r = 8 + Math.random() * 6;
+                const theta = Math.random() * Math.PI * 2;
+                x = Math.cos(theta) * r;
+                y = (Math.random() - 0.5) * 0.3;
+                z = Math.sin(theta) * r;
+            }
+
+            posArray[i3] = homeArray[i3] = x;
+            posArray[i3+1] = homeArray[i3+1] = y;
+            posArray[i3+2] = homeArray[i3+2] = z;
+
+            // Define Scatter Destination (Random points in space)
+            scatterArray[i3] = (Math.random() - 0.5) * 150;
+            scatterArray[i3+1] = (Math.random() - 0.5) * 150;
+            scatterArray[i3+2] = (Math.random() - 0.5) * 150;
+
+            const mixed = colorA.clone().lerp(colorB, Math.random());
+            colorArray[i3] = mixed.r; colorArray[i3+1] = mixed.g; colorArray[i3+2] = mixed.b;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+        const material = new THREE.PointsMaterial({ size: 0.06, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false });
+        const points = new THREE.Points(geometry, material);
+        scene.add(points);
+
+        // --- 5. GESTURE ENGINE ---
+        let hX = 0, hY = 0, isPinch = false, isFist = false;
+
+        // --- 6. ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const p = geometry.attributes.position.array;
+
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                // Target selection: If fist is closed, go HOME. If open, go SCATTER.
+                const tx = isFist ? homeArray[i3] : scatterArray[i3];
+                const ty = isFist ? homeArray[i3+1] : scatterArray[i3+1];
+                const tz = isFist ? homeArray[i3+2] : scatterArray[i3+2];
+
+                // Smooth movement to target
+                const speed = isFist ? 0.08 : 0.02; // Snap home quickly, scatter slowly
+                p[i3] += (tx - p[i3]) * speed;
+                p[i3+1] += (ty - p[i3+1]) * speed;
+                p[i3+2] += (tz - p[i3+2]) * speed;
+            }
+
+            points.rotation.y += 0.002;
+            geometry.attributes.position.needsUpdate = true;
+            composer.render();
+        }
+        animate();
+      
+    </script>
+</body>
+</html>
