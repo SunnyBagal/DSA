@@ -19,5 +19,4 @@ for i in tokens:
       res.append(b/a)
 
 print(res[0])
-print(13/5)
 
