@@ -1,22 +1,48 @@
 numMap = {
-  "2" : ['a', 'b', 'c'],
-  "3" : ['d','e','f'],
-  "4" : ['g','h','i'],
-  "5" : ['l', 'm', 'n'],
-  "6" : ['o','p','q'],
-  "7" : ['r','s','t'],
-  "8" : ['u','v','w'],
-  "9" : ['x', 'y', 'z']
-}
+            "2": "abc",
+            "3": "def",
+            "4": "ghi",
+            "5": "jkl",
+            "6": "mno",
+            "7": "pqrs",
+            "8": "tuv",
+            "9": "wxyz",
+        }
 
 #&        digits = "23"
 #&        ["ad","ae","af","bd","be","bf","cd","ce","cf"]
 
-def numToLetter(digits):
-  if len(digits) == 1:
-    print(numMap[digits])
+
+digits = "23"
+
+def generateAll(digits):
+
+  if len(digits) == 0:
+    return []
   
-  def backtrack(digits):
-     for i in range("")
+  numMap = {
+            "2": "abc",
+            "3": "def",
+            "4": "ghi",
+            "5": "jkl",
+            "6": "mno",
+            "7": "pqrs",
+            "8": "tuv",
+            "9": "wxyz",
+        }
+  
+  res = []
+
+  def backtrack(combination, new_digit):
+    if not new_digit:
+      res.append(combination)
+      return
+
+    for letter in numMap[new_digit[0]]:
+      backtrack(combination + letter, new_digit[1:])
 
 
+  backtrack("", digits)
+  return res
+
+print(generateAll(digits))
