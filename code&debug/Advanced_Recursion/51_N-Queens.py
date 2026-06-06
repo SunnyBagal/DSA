@@ -96,3 +96,6 @@ def solvedNQueens() :
   return ans
 
 print(solvedNQueens())
+
+#~ TC: O( N! )
+#~ SC: O( N^2 ) 
